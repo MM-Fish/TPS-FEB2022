@@ -1,0 +1,16 @@
+SETTING:
+  MODEL_DIR_NAME: '../models/' # 学習結果の諸々を保存するディレクトリ
+  SUB_DIR_NAME: '../data/submission/' # sample提出ファイル保存ディレクトリ
+  RAW_DATA_DIR_NAME: '../data/raw/' # オリジナルデータの格納先ディレクトリ
+  FEATURE_PATH: '../data/features/' # オリジナルデータ
+  TARGET_ENCODING:
+    'Streptococcus_pyogenes': 0
+    'Salmonella_enterica': 1
+    'Enterococcus_hirae': 2
+    'Escherichia_coli': 3
+    'Campylobacter_jejuni': 4
+    'Streptococcus_pneumoniae': 5
+    'Staphylococcus_aureus': 6
+    'Escherichia_fergusonii': 7
+    'Bacteroides_fragilis': 8
+    'Klebsiella_pneumoniae': 9

@@ -1,0 +1,6 @@
+.tmp.drivedownload
+.tmp.driveupload
+.DS_Store
+kaggle.json
+code/__pycache__
+data/*
