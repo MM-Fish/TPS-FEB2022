@@ -9,7 +9,7 @@ import yaml
 from model import Model
 from tqdm import tqdm, tqdm_notebook
 from sklearn.metrics import log_loss, mean_squared_error, mean_squared_log_error, mean_absolute_error, accuracy_score
-from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold
+from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold, train_test_split
 from typing import Callable, List, Optional, Tuple, Union
 from util import Logger, Util
 
@@ -49,16 +49,19 @@ class Runner:
         self.random_state = cv.get('random_state')
         self.shuffle = cv.get('shuffle')
         self.cv_target_column = cv.get('cv_target')
+        self.debug = setting.get('debug')
         self.feature_dir_name = feature_dir_name
         self.model_dir_name = model_dir_name
         self.remove_train_index = None # trainデータからデータを絞り込む際に使用する。除外するindexを保持。
-        self.train_x = self.load_x_train()
-        self.train_y = self.load_y_train()
+        # self.train_x = self.load_x_train()
+        # self.train_y = self.load_y_train()
+        self.train_x, self.train_y = self.load_train()
         self.out_dir_name = model_dir_name + run_name + '/'
         self.logger = Logger(self.out_dir_name)
         if self.calc_shap:
             self.shap_values = np.zeros(self.train_x.shape)
         self.metrics = accuracy_score
+        self.logger.info(f'DEBUG MODE {self.debug}')
         self.logger.info(f'{self.run_name} - train_x shape: {self.train_x.shape}')
         self.logger.info(f'{self.run_name} - train_y shape: {self.train_y.shape}')
 
@@ -150,7 +153,10 @@ class Runner:
             else:
                 va_pred = (model.predict(va_x)> 0.5).astype(int)
 
-            score = self.metrics(va_y, va_pred)
+            # 列数1(多クラス分類以外)
+            # score = self.metrics(va_y, va_pred)
+            # 列数>1(多クラス分類以外)
+            score = self.metrics(va_y, np.argmax(va_pred, axis=1))
 
             # モデル、インデックス、予測値、評価を返す
             return model, va_idx, va_pred, score
@@ -230,7 +236,10 @@ class Runner:
             self.logger.info(f'{self.run_name} - end prediction fold:{i_fold}')
 
         # 予測の平均値を出力する
-        pred_avg = (np.mean(preds, axis=0) > 0.5).astype(int)
+        # 列数1(多クラス分類以外)
+        # pred_avg = (np.mean(preds, axis=0) > 0.5).astype(int)
+        # 列数>1(多クラス分類以外)
+        pred_avg = np.argmax(np.mean(preds, axis=0), axis=1)
 
         # 推論結果の保存（submit対象データ）
         Util.dump_df_pickle(pd.DataFrame(pred_avg), self.out_dir_name + f'{self.run_name}-pred.pkl')
@@ -311,7 +320,18 @@ class Runner:
 
         return pd.Series(train_y[self.target])
 
-
+    # 多クラス分類のデータ分割
+    def load_train(self) -> Tuple[pd.DataFrame, pd.Series]:
+        train_x, train_y = self.load_x_train(), self.load_y_train()
+        if self.debug is True:
+            """サンプル数を500程度にする
+            """
+            test_size = 500 / len(train_y)
+            _, train_x, _, train_y = train_test_split(train_x, train_y, test_size=test_size, stratify=train_y)
+            return train_x, train_y
+        else:
+            return  train_x, train_y
+        
     def load_x_test(self) -> pd.DataFrame:
         """テストデータの特徴量を読み込む
         :return: テストデータの特徴量
@@ -336,8 +356,7 @@ class Runner:
         :return: foldに対応するレコードのインデックス
         """
         # 学習データ・バリデーションデータを分けるインデックスを返す
-        train_y = self.load_y_train()
-        dummy_x = np.zeros(len(train_y))
+        dummy_x = np.zeros(len(self.train_y))
         kf = KFold(n_splits=self.n_splits, shuffle=self.shuffle, random_state=self.random_state)
         return list(kf.split(dummy_x))[i_fold]
 
@@ -361,7 +380,6 @@ class Runner:
         """
         # 学習データ・バリデーションデータを分けるインデックスを返す
         group_data = self.load_stratify_or_group_target()
-        train_y = self.load_y_train()
         dummy_x = np.zeros(len(group_data))
         kf = GroupKFold(n_splits=self.n_splits)
-        return list(kf.split(dummy_x, train_y, groups=group_data))[i_fold]
+        return list(kf.split(dummy_x, self.train_y, groups=group_data))[i_fold]

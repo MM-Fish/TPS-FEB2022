@@ -6,7 +6,7 @@ CONFIG_FILE = '../configs/config.yaml'
 
 with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
-FEATURE_DIR_NAME = yml['SETTING']['FEATURE_PATH']
+FEATURE_DIR_NAME = yml['SETTING']['FEATURE_DIR_NAME']
 
 if __name__ == '__main__':
 

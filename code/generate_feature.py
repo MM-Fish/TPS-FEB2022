@@ -19,8 +19,8 @@ CONFIG_FILE = '../configs/config.yaml'
 with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
 
-RAW_DATA_DIR_NAME = yml['SETTING']['RAW_DATA_DIR_NAME']  # 特徴量生成元のRAWデータ格納場所
-Feature.dir = yml['SETTING']['FEATURE_PATH']  # 生成した特徴量の出力場所
+RAW_DIR_NAME = yml['SETTING']['RAW_DIR_NAME']  # 特徴量生成元のRAWデータ格納場所
+Feature.dir = yml['SETTING']['FEATURE_DIR_NAME']  # 生成した特徴量の出力場所
 feature_memo_path = Feature.dir + '_features_memo.csv'
 
 
@@ -32,10 +32,8 @@ class target(Feature):
 
 class rawdata(Feature):
     def create_features(self):
-        # self.train = train.iloc[:, 1:-1].copy()
-        # self.test = test.iloc[:, 1:].copy()
-        self.train = train.iloc[:, 1:5].copy()
-        self.test = test.iloc[:, 1:5].copy()
+        self.train = train.iloc[:, 1:-1].copy()
+        self.test = test.iloc[:, 1:].copy()
         create_memo('all_raw_data', '全初期データ')
 
 
@@ -65,8 +63,8 @@ if __name__ == '__main__':
     create_memo('特徴量', 'メモ')
 
     args = get_arguments()
-    train = pd.read_csv(RAW_DATA_DIR_NAME + 'train.csv')
-    test = pd.read_csv(RAW_DATA_DIR_NAME + 'test.csv')
+    train = pd.read_csv(RAW_DIR_NAME + 'train.csv')
+    test = pd.read_csv(RAW_DIR_NAME + 'test.csv')
 
     # globals()でtrain,testのdictionaryを渡す
     generate_features(globals(), args.force)

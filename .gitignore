@@ -3,4 +3,7 @@
 .DS_Store
 kaggle.json
 code/__pycache__
-data/*
+data/external
+data/features/*.pkl
+data/raw
+data/submission

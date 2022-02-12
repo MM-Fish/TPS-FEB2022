@@ -22,7 +22,8 @@ CONFIG_FILE = '../configs/config.yaml'
 with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
 MODEL_DIR_NAME = yml['SETTING']['MODEL_DIR_NAME']
-FEATURE_DIR_NAME = yml['SETTING']['FEATURE_PATH']
+FEATURE_DIR_NAME = yml['SETTING']['FEATURE_DIR_NAME']
+DEBUG = True # スクリプトが動くかどうか検証する
 
 
 def exist_check(path, run_name):
@@ -118,7 +119,8 @@ if __name__ == '__main__':
         'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
         'target': 'target',  # 目的変数
         'calc_shap': False,  # shap値を計算するか否か
-        'save_train_pred': False  # trainデータでの推論値を保存するか否か
+        'save_train_pred': False,  # trainデータでの推論値を保存するか否か
+        'debug': DEBUG
     }
 
     # モデルのパラメータ
@@ -170,12 +172,13 @@ if __name__ == '__main__':
         'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
         'target': 'target',  # 目的変数
         'calc_shap': False,  # shap値を計算するか否か
-        'save_train_pred': False  # trainデータでの推論値を保存するか否か
+        'save_train_pred': False,  # trainデータでの推論値を保存するか否か
+        'debug': DEBUG
     }
 
     model_params = {
-        'objective': 'multiclass',
-        'metric': 'multi_logloss',
+        'objective': 'multi:softmax',
+        'metric': 'mlogloss',
         'num_class': 10,
         'num_round': 5000,
         'early_stopping_rounds': 1000,

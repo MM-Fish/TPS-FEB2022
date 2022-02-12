@@ -10,7 +10,7 @@ CONFIG_FILE = '../configs/config.yaml'
 
 with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
-RAW_DATA_DIR_NAME = yml['SETTING']['RAW_DATA_DIR_NAME']
+RAW_DIR_NAME = yml['SETTING']['RAW_DIR_NAME']
 SUB_DIR_NAME = yml['SETTING']['SUB_DIR_NAME']
 
 # tensorflowとloggingのcollisionに対応
@@ -92,11 +92,11 @@ class Submission:
         logger = Logger(path)
         logger.info(f'{run_name} - start create submission')
 
-        submission = pd.read_csv(RAW_DATA_DIR_NAME + 'sample_submission.csv')
+        submission = pd.read_csv(RAW_DIR_NAME + 'sample_submission.csv')
         pred = Util.load_df_pickle(path + f'{run_name}-pred.pkl')
         # multi-classification
         REVERSE_TARGET_ENCODING = {value : key for (key, value) in yml['SETTING']['TARGET_ENCODING'].items()}
-        submission[sub_y_column] = pred.map(lambda x: REVERSE_TARGET_ENCODING[x])
+        submission[sub_y_column] = pred.iloc[:,0].map(lambda x: REVERSE_TARGET_ENCODING[x])
         
         submission.to_csv(path + f'{run_name}_submission.csv', index=False)
         logger.info(f'{run_name} - end create submission')

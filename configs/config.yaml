@@ -1,8 +1,8 @@
 SETTING:
   MODEL_DIR_NAME: '../models/' # 学習結果の諸々を保存するディレクトリ
   SUB_DIR_NAME: '../data/submission/' # sample提出ファイル保存ディレクトリ
-  RAW_DATA_DIR_NAME: '../data/raw/' # オリジナルデータの格納先ディレクトリ
-  FEATURE_PATH: '../data/features/' # オリジナルデータ
+  RAW_DIR_NAME: '../data/raw/' # オリジナルデータの格納先ディレクトリ
+  FEATURE_DIR_NAME: '../data/features/' # 特徴量の格納先ディレクトリ
   TARGET_ENCODING:
     'Streptococcus_pyogenes': 0
     'Salmonella_enterica': 1
