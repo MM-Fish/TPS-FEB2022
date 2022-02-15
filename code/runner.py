@@ -1,3 +1,4 @@
+from tkinter import Y
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ from sklearn.metrics import log_loss, mean_squared_error, mean_squared_log_error
 from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold, train_test_split
 from typing import Callable, List, Optional, Tuple, Union
 from util import Logger, Util
+from keras.utils import np_utils
 
 # 定数
 shap_sampling = 10000
@@ -151,12 +153,15 @@ class Runner:
             if self.calc_shap:
                 va_pred, self.shap_values[va_idx[:shap_sampling]] = model.predict_and_shap(va_x, shap_sampling)
             else:
-                va_pred = (model.predict(va_x)> 0.5).astype(int)
-
-            # 列数1(多クラス分類以外)
-            # score = self.metrics(va_y, va_pred)
-            # 列数>1(多クラス分類以外)
-            score = self.metrics(va_y, np.argmax(va_pred, axis=1))
+                # 回帰問題
+                va_pred = model.predict(va_x)
+                # 二項分類(0.5以上を1とする)
+                # va_pred = (va_pred)> 0.5).astype(int)
+                # 多項分類
+                va_pred = np.argmax(va_pred, axis=1)
+            va_y = np.argmax(np.array(va_y), axis=1)
+            
+            score = self.metrics(va_y, va_pred)
 
             # モデル、インデックス、予測値、評価を返す
             return model, va_idx, va_pred, score
@@ -236,13 +241,18 @@ class Runner:
             self.logger.info(f'{self.run_name} - end prediction fold:{i_fold}')
 
         # 予測の平均値を出力する
-        # 列数1(多クラス分類以外)
-        # pred_avg = (np.mean(preds, axis=0) > 0.5).astype(int)
-        # 列数>1(多クラス分類以外)
-        pred_avg = np.argmax(np.mean(preds, axis=0), axis=1)
+        pred_avg = np.mean(preds, axis=0)
+        # 回帰
+        pred_sub = pred_avg
+        # 二項分類(0.5以上を1とする)
+        pred_sub = (pred_avg > 0.5).astype(int)
+        # 多クラス分類
+        pred_sub = np.argmax(pred_avg, axis=1)
 
-        # 推論結果の保存（submit対象データ）
+        # 予測確率の保存
         Util.dump_df_pickle(pd.DataFrame(pred_avg), self.out_dir_name + f'{self.run_name}-pred.pkl')
+        # 推論結果の保存（submit対象データ）
+        Util.dump_df_pickle(pd.DataFrame(pred_sub), self.out_dir_name + f'{self.run_name}-pred.pkl')
 
         self.logger.info(f'{self.run_name} - end prediction cv')
 
@@ -306,6 +316,7 @@ class Runner:
         return df
 
 
+    # 型要修正（returnのデータ型が異なる）
     def load_y_train(self) -> pd.Series:
         """学習データの目的変数を読み込む
         対数変換や使用するデータを削除する場合には、このメソッドの修正が必要
@@ -318,7 +329,12 @@ class Runner:
         # train_y = train_y.drop(index = self.remove_train_index)
         # -----------------------------------------
 
-        return pd.Series(train_y[self.target])
+        if self.model_cls.__name__ == 'ModelKERAS':
+            """kerasを使って多クラス分類を実装する場合
+            """
+            return pd.DataFrame(np_utils.to_categorical(train_y[[self.target]]))
+        else:
+            return pd.Series(train_y[self.target])
 
     # 多クラス分類のデータ分割
     def load_train(self) -> Tuple[pd.DataFrame, pd.Series]:
@@ -326,7 +342,7 @@ class Runner:
         if self.debug is True:
             """サンプル数を500程度にする
             """
-            test_size = 500 / len(train_y)
+            test_size = 200 / len(train_y)
             _, train_x, _, train_y = train_test_split(train_x, train_y, test_size=test_size, stratify=train_y)
             return train_x, train_y
         else:

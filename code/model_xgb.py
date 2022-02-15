@@ -48,7 +48,6 @@ class ModelXGB(Model):
         dtest = xgb.DMatrix(te_x)
         return self.model.predict(dtest, ntree_limit=self.model.best_ntree_limit)
 
-
     def save_model(self, path):
         model_path = os.path.join(path, f'{self.run_fold_name}.model')
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
