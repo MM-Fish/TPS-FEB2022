@@ -1,4 +1,5 @@
 import os
+from pickletools import optimize
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -24,9 +25,14 @@ class ModelKERAS(Model):
 
         # ハイパーパラメータの設定
         params = dict(self.params)
+        if params['optimizer'] == 'SGD':
+            learning_rate = params['learning_rate']
+            decay_rate = params['learning_rate'] / params['epochs']
+            momentum = params['momentum']
+            optimizer = SGD(lr=learning_rate, momentum=momentum, decay=decay_rate, nesterov=False)
 
         # モデルの定義
-        self.model = self.build_model(tr_x.shape[1])
+        self.model = self.build_model(tr_x.shape[1], optimizer)
 
         # 学習
         if validation:
@@ -51,7 +57,7 @@ class ModelKERAS(Model):
         valid_prediticion = self.model.predict(te_x, num_iteration=self.model.best_iteration)
         return valid_prediticion, fold_importance
 
-    def build_model(self, n_features):
+    def build_model(self, n_features, optimizer):
         model = Sequential()
         model.add(Dense(512, input_shape=(n_features,)))
         model.add(PReLU())
@@ -63,7 +69,7 @@ class ModelKERAS(Model):
         model.add(Dropout(0.5))
         model.add(Dense(10))
         model.add(Activation('softmax'))
-        model.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.1))
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         return model
 
     def save_model(self, path):

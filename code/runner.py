@@ -159,7 +159,10 @@ class Runner:
                 # va_pred = (va_pred)> 0.5).astype(int)
                 # 多項分類
                 va_pred = np.argmax(va_pred, axis=1)
-            va_y = np.argmax(np.array(va_y), axis=1)
+            
+            # NNのみ場合は、load_y_train時にnp_utils.to_categorical()をおこなっているので戻す必要がある
+            if self.model_cls.__name__ == 'ModelKERAS':
+                va_y = np.argmax(np.array(va_y), axis=1)
             
             score = self.metrics(va_y, va_pred)
 
@@ -250,7 +253,7 @@ class Runner:
         pred_sub = np.argmax(pred_avg, axis=1)
 
         # 予測確率の保存
-        Util.dump_df_pickle(pd.DataFrame(pred_avg), self.out_dir_name + f'{self.run_name}-pred.pkl')
+        Util.dump_df_pickle(pd.DataFrame(pred_avg), self.out_dir_name + f'{self.run_name}-proba.pkl')
         # 推論結果の保存（submit対象データ）
         Util.dump_df_pickle(pd.DataFrame(pred_sub), self.out_dir_name + f'{self.run_name}-pred.pkl')
 
