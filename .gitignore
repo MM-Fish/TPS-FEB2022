@@ -7,3 +7,4 @@ data/external
 data/features/*.pkl
 data/raw
 data/submission
+edas

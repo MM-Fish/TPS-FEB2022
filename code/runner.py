@@ -55,8 +55,6 @@ class Runner:
         self.feature_dir_name = feature_dir_name
         self.model_dir_name = model_dir_name
         self.remove_train_index = None # trainデータからデータを絞り込む際に使用する。除外するindexを保持。
-        # self.train_x = self.load_x_train()
-        # self.train_y = self.load_y_train()
         self.train_x, self.train_y = self.load_train()
         self.out_dir_name = model_dir_name + run_name + '/'
         self.logger = Logger(self.out_dir_name)
@@ -286,8 +284,8 @@ class Runner:
         model.load_model(self.out_dir_name)
         pred = model.predict(test_x)
 
-        # 予測結果の保存
-        Util.dump(pred, f'../model/pred/{self.run_name}-test.pkl')
+        # 推論結果の保存（submit対象データ）
+        Util.dump_df_pickle(pd.DataFrame(pred), self.out_dir_name + f'{self.run_name}-pred.pkl')
 
         self.logger.info(f'{self.run_name} - end prediction all')
 
