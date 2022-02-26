@@ -26,7 +26,7 @@ with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
 MODEL_DIR_NAME = yml['SETTING']['MODEL_DIR_NAME']
 FEATURE_DIR_NAME = yml['SETTING']['FEATURE_DIR_NAME']
-DEBUG = False # スクリプトが動くかどうか検証する
+DEBUG = True # スクリプトが動くかどうか検証する
 
 
 def exist_check(path, run_name):
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     # # ######################################################
     # # 学習・推論 keras ###################################
 
-    # run nameの設定
+    # # run nameの設定
     # run_name = 'keras'
     # run_name = run_name + suffix
     # dir_name = MODEL_DIR_NAME + run_name + '/'
@@ -229,6 +229,7 @@ if __name__ == '__main__':
 
     # # 諸々の設定
     # setting = {
+    #     'task_type': 'multiclass',
     #     'run_name': run_name,  # run名
     #     'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
     #     'target': 'target',  # 目的変数

@@ -24,7 +24,9 @@ class ModelKERAS(Model):
 
         if params['task_type'] == 'multiclass':
             tr_y = pd.DataFrame(np_utils.to_categorical(np.array(tr_y)))
-
+            if va_y is not None:
+                va_y = pd.DataFrame(np_utils.to_categorical(np.array(va_y)))
+        
         # データのセット
         validation = va_x is not None
 

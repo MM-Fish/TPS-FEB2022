@@ -248,6 +248,9 @@ class Runner:
         elif self.task_type == 'multiclass':
             # 多クラス分類
             pred_sub = np.argmax(pred_avg, axis=1)
+        else:
+            print('task_typeが正しくありません。')
+            sys.exit(0)
 
         # 推論結果の保存（submit対象データ）
         Util.dump_df_pickle(pd.DataFrame(pred_sub), self.out_dir_name + f'{self.run_name}-pred.pkl')
