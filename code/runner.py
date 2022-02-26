@@ -13,7 +13,6 @@ from sklearn.metrics import log_loss, mean_squared_error, mean_squared_log_error
 from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold, train_test_split
 from typing import Callable, List, Optional, Tuple, Union
 from util import Logger, Util
-from keras.utils import np_utils
 
 # 定数
 shap_sampling = 10000
@@ -40,6 +39,7 @@ class Runner:
         :model_dir_name: 学習に使用するファイルを保存するディレクトリ
         """
         self.run_name = run_name
+        self.task_type = setting.get('task_type')
         self.model_cls = model_cls
         self.features = features
         self.target = setting.get('target')
@@ -157,11 +157,7 @@ class Runner:
                 # va_pred = (va_pred)> 0.5).astype(int)
                 # 多項分類
                 va_pred = np.argmax(va_pred, axis=1)
-            
-            # NNのみ場合は、load_y_train時にnp_utils.to_categorical()をおこなっているので戻す必要がある
-            if self.model_cls.__name__ == 'ModelKERAS':
-                va_y = np.argmax(np.array(va_y), axis=1)
-            
+                        
             score = self.metrics(va_y, va_pred)
 
             # モデル、インデックス、予測値、評価を返す
@@ -243,15 +239,16 @@ class Runner:
 
         # 予測の平均値を出力する
         pred_avg = np.mean(preds, axis=0)
-        # 回帰
-        pred_sub = pred_avg
-        # 二項分類(0.5以上を1とする)
-        pred_sub = (pred_avg > 0.5).astype(int)
-        # 多クラス分類
-        pred_sub = np.argmax(pred_avg, axis=1)
+        if self.task_type == 'regression':
+            # 回帰
+            pred_sub = pred_avg
+        elif self.task_type == 'binary':
+            # 二項分類(0.5以上を1とする)
+            pred_sub = (pred_avg > 0.5).astype(int)
+        elif self.task_type == 'multiclass':
+            # 多クラス分類
+            pred_sub = np.argmax(pred_avg, axis=1)
 
-        # 予測確率の保存
-        Util.dump_df_pickle(pd.DataFrame(pred_avg), self.out_dir_name + f'{self.run_name}-proba.pkl')
         # 推論結果の保存（submit対象データ）
         Util.dump_df_pickle(pd.DataFrame(pred_sub), self.out_dir_name + f'{self.run_name}-pred.pkl')
 
@@ -329,13 +326,7 @@ class Runner:
         # 特定の値を除外して学習させる場合 -------------
         # train_y = train_y.drop(index = self.remove_train_index)
         # -----------------------------------------
-
-        if self.model_cls.__name__ == 'ModelKERAS':
-            """kerasを使って多クラス分類を実装する場合
-            """
-            return pd.DataFrame(np_utils.to_categorical(train_y[[self.target]]))
-        else:
-            return pd.Series(train_y[self.target])
+        return pd.Series(train_y[self.target])
 
     # 多クラス分類のデータ分割
     def load_train(self) -> Tuple[pd.DataFrame, pd.Series]:

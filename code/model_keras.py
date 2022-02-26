@@ -18,13 +18,17 @@ result_array = []
 
 class ModelKERAS(Model):
 
+    # tr_x->pd.DataFrame, tr_y->pd.Series 型定義
     def train(self, tr_x, tr_y, va_x=None, va_y=None):
+        params = dict(self.params)
+
+        if params['task_type'] == 'multiclass':
+            tr_y = pd.DataFrame(np_utils.to_categorical(np.array(tr_y)))
 
         # データのセット
         validation = va_x is not None
 
         # ハイパーパラメータの設定
-        params = dict(self.params)
         if params['optimizer'] == 'SGD':
             learning_rate = params['learning_rate']
             decay_rate = params['learning_rate'] / params['epochs']

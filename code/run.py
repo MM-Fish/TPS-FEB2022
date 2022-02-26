@@ -125,7 +125,8 @@ if __name__ == '__main__':
         'target': 'target',  # 目的変数
         'calc_shap': False,  # shap値を計算するか否か
         'save_train_pred': True,  # trainデータでの推論値を保存するか否か
-        'debug': DEBUG
+        'debug': DEBUG,
+        'task_type': 'multiclass'
     }
 
     # モデルのパラメータ
@@ -237,6 +238,7 @@ if __name__ == '__main__':
     # }
 
     # model_params = {
+    #     'task_type': 'multiclass',
     #     'epochs': 50,
     #     'batch_size': 999,
     #     'learning_rate': 0.1,
