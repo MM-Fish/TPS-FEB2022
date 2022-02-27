@@ -7,7 +7,7 @@ import seaborn as sns
 import sys,os
 import shap
 import yaml
-from model import Model
+from models.learning.model import Model
 from tqdm import tqdm, tqdm_notebook
 from sklearn.metrics import log_loss, mean_squared_error, mean_squared_log_error, mean_absolute_error, accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold, train_test_split
@@ -20,14 +20,13 @@ corr_sampling = 10000
 class Runner:
 
     def __init__(self
-                , run_name: str
                 , model_cls: Callable[[str, dict], Model]
                 , features: List[str]
                 , setting: dict
                 , params: dict
                 , cv: dict
                 , feature_dir_name: str
-                , model_dir_name: str):
+                , out_dir_name: str):
         """コンストラクタ
         :run_name: runの名前
         :model_cls: モデルのクラス
@@ -36,9 +35,9 @@ class Runner:
         :params: ハイパーパラメータ
         :cv: CVの設定
         :feature_dir_name: 特徴量を読み込むディレクトリ
-        :model_dir_name: 学習に使用するファイルを保存するディレクトリ
+        :out_dir_name: 学習に使用するファイルを保存するディレクトリ
         """
-        self.run_name = run_name
+        self.run_name = setting.get('run_name')
         self.task_type = setting.get('task_type')
         self.model_cls = model_cls
         self.features = features
@@ -53,10 +52,11 @@ class Runner:
         self.cv_target_column = cv.get('cv_target')
         self.debug = setting.get('debug')
         self.feature_dir_name = feature_dir_name
-        self.model_dir_name = model_dir_name
+        self.model_dir_name = out_dir_name
         self.remove_train_index = None # trainデータからデータを絞り込む際に使用する。除外するindexを保持。
         self.train_x, self.train_y = self.load_train()
-        self.out_dir_name = model_dir_name + run_name + '/'
+        self.test_x = self.load_x_test()
+        self.out_dir_name = out_dir_name
         self.logger = Logger(self.out_dir_name)
         if self.calc_shap:
             self.shap_values = np.zeros(self.train_x.shape)
@@ -64,6 +64,7 @@ class Runner:
         self.logger.info(f'DEBUG MODE {self.debug}')
         self.logger.info(f'{self.run_name} - train_x shape: {self.train_x.shape}')
         self.logger.info(f'{self.run_name} - train_y shape: {self.train_y.shape}')
+        self.logger.info(f'{self.run_name} - test_x shape: {self.test_x.shape}')
 
 
     def visualize_corr(self):
@@ -225,7 +226,6 @@ class Runner:
         あらかじめrun_train_cvを実行しておく必要がある
         """
         self.logger.info(f'{self.run_name} - start prediction cv')
-        test_x = self.load_x_test()
         preds = []
 
         # 各foldのモデルで予測を行う
@@ -233,7 +233,7 @@ class Runner:
             self.logger.info(f'{self.run_name} - start prediction fold:{i_fold}')
             model = self.build_model(i_fold)
             model.load_model(self.out_dir_name)
-            pred = model.predict(test_x)
+            pred = model.predict(self.test_x)
             preds.append(pred)
             self.logger.info(f'{self.run_name} - end prediction fold:{i_fold}')
 
@@ -276,13 +276,11 @@ class Runner:
         """
         self.logger.info(f'{self.run_name} - start prediction all')
 
-        test_x = self.load_x_test()
-
         # 学習データ全てで学習したモデルで予測を行う
         i_fold = 'all'
         model = self.build_model(i_fold)
         model.load_model(self.out_dir_name)
-        pred = model.predict(test_x)
+        pred = model.predict(self.test_x)
 
         # 推論結果の保存（submit対象データ）
         Util.dump_df_pickle(pd.DataFrame(pred), self.out_dir_name + f'{self.run_name}-pred.pkl')
@@ -317,7 +315,6 @@ class Runner:
         return df
 
 
-    # 型要修正（returnのデータ型が異なる）
     def load_y_train(self) -> pd.Series:
         """学習データの目的変数を読み込む
         対数変換や使用するデータを削除する場合には、このメソッドの修正が必要
@@ -335,7 +332,7 @@ class Runner:
     def load_train(self) -> Tuple[pd.DataFrame, pd.Series]:
         train_x, train_y = self.load_x_train(), self.load_y_train()
         if self.debug is True:
-            """サンプル数を500程度にする
+            """サンプル数を200程度にする
             """
             test_size = 200 / len(train_y)
             _, train_x, _, train_y = train_test_split(train_x, train_y, test_size=test_size, stratify=train_y)

@@ -1,53 +1,60 @@
 import os
+from pickletools import optimize
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import japanize_matplotlib
 import shap
-import lightgbm as lgb
 from model import Model
 from util import Util
+from keras.models import Sequential
+from keras.layers import Dense, Activation, PReLU, Dropout, BatchNormalization
+from tensorflow.keras.optimizers import SGD
+from keras.utils import np_utils
 
 # 各foldのモデルを保存する配列
 model_array = []
+result_array = []
 
-class ModelLGB(Model):
+class ModelKERAS(Model):
 
+    # tr_x->pd.DataFrame, tr_y->pd.Series 型定義
     def train(self, tr_x, tr_y, va_x=None, va_y=None):
+        params = dict(self.params)
 
+        if params['task_type'] == 'multiclass':
+            tr_y = pd.DataFrame(np_utils.to_categorical(np.array(tr_y)))
+            if va_y is not None:
+                va_y = pd.DataFrame(np_utils.to_categorical(np.array(va_y)))
+        
         # データのセット
         validation = va_x is not None
-        dtrain = lgb.Dataset(tr_x, tr_y)
-
-        if validation:
-            dvalid = lgb.Dataset(va_x, va_y)
 
         # ハイパーパラメータの設定
-        params = dict(self.params)
-        num_round = params.pop('num_round')
-        verbose = params.pop('verbose')
+        if params['optimizer'] == 'SGD':
+            learning_rate = params['learning_rate']
+            decay_rate = params['learning_rate'] / params['epochs']
+            momentum = params['momentum']
+            optimizer = SGD(lr=learning_rate, momentum=momentum, decay=decay_rate, nesterov=False)
+
+        # モデルの定義
+        self.model = self.build_model(tr_x.shape[1], optimizer)
 
         # 学習
         if validation:
-            early_stopping_rounds = params.pop('early_stopping_rounds')
-            self.model = lgb.train(
-                                params,
-                                dtrain,
-                                num_boost_round=num_round,
-                                valid_sets=(dtrain, dvalid),
-                                early_stopping_rounds=early_stopping_rounds,
-                                verbose_eval=verbose
+            result = self.model.fit(
+                                tr_x,
+                                tr_y,
+                                epochs = params['epochs'],
+                                batch_size = params['batch_size'],
+                                validation_data = [va_x, va_y]
                                 )
+            result_array.append(result)
             model_array.append(self.model)
-
-        else:
-            self.model = lgb.train(params, dtrain, num_boost_round=num_round)
-            model_array.append(self.model)
-
 
     # shapを計算しないver
     def predict(self, te_x):
-        return self.model.predict(te_x, num_iteration=self.model.best_iteration)
+        return self.model.predict(te_x)
 
 
     # shapを計算するver
@@ -56,6 +63,20 @@ class ModelLGB(Model):
         valid_prediticion = self.model.predict(te_x, num_iteration=self.model.best_iteration)
         return valid_prediticion, fold_importance
 
+    def build_model(self, n_features, optimizer):
+        model = Sequential()
+        model.add(Dense(512, input_shape=(n_features,)))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(0.5))
+        model.add(Dense(512))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(0.5))
+        model.add(Dense(10))
+        model.add(Activation('softmax'))
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+        return model
 
     def save_model(self, path):
         model_path = os.path.join(path, f'{self.run_fold_name}.model')
@@ -66,6 +87,18 @@ class ModelLGB(Model):
     def load_model(self, path):
         model_path = os.path.join(path, f'{self.run_fold_name}.model')
         self.model = Util.load(model_path)
+
+
+    @classmethod
+    def calc_loss_curve(self, dir_name, run_name):
+        fig, ax = plt.subplots(figsize = (10, 10))
+        ax.plot(result_array[0].history['loss'])
+        ax.plot(result_array[0].history['val_loss'])
+        ax.legend(['Train', 'Val'])
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Loss')
+        plt.savefig(dir_name + run_name + '_loss_curve.png', dpi=300, bbox_inches="tight")
+        plt.close()
 
 
     @classmethod

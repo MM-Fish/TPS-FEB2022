@@ -1,3 +1,4 @@
+from distutils.log import debug
 from pyexpat import model
 import sys
 import os
@@ -7,18 +8,15 @@ import yaml
 import json
 import collections as cl
 import warnings
-from model_lgb import ModelLGB
-from model_xgb import ModelXGB
-from model_keras import ModelKERAS
-from model_lda import ModelLDA
-from runner import Runner
-from util import Submission
 
-warnings.filterwarnings("ignore")
-now = datetime.datetime.now()
-suffix = now.strftime("_%m%d_%H%M")
-warnings.simplefilter('ignore')
-key_list = ['load_features', 'use_features', 'model_params', 'cv', 'dataset']
+sys.path.append('./src')
+sys.path.append('./src/models/learning')
+from src.runner import Runner
+from src.util import Submission
+from src.models.learning.model_lgb import ModelLGB
+from src.models.learning.model_xgb import ModelXGB
+from src.models.learning.model_keras import ModelKERAS
+from src.models.learning.model_lda import ModelLDA
 
 CONFIG_FILE = '../configs/config.yaml'
 
@@ -26,8 +24,10 @@ with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
 MODEL_DIR_NAME = yml['SETTING']['MODEL_DIR_NAME']
 FEATURE_DIR_NAME = yml['SETTING']['FEATURE_DIR_NAME']
-DEBUG = True # スクリプトが動くかどうか検証する
 
+warnings.filterwarnings("ignore")
+warnings.simplefilter('ignore')
+key_list = ['load_features', 'use_features', 'model_params', 'cv', 'dataset']
 
 def exist_check(path, run_name):
     """学習ファイルの存在チェックと実行確認
@@ -90,6 +90,11 @@ def set_default(obj):
 
 
 if __name__ == '__main__':
+    DEBUG = True # スクリプトが動くかどうか検証する
+    now = datetime.datetime.now()
+    suffix = now.strftime("_%m%d_%H%M")
+    if DEBUG is True:
+        suffix += '-debug'
 
     # pklからロードする特徴量の指定
     features = ['rawdata']
@@ -117,60 +122,60 @@ if __name__ == '__main__':
     if DEBUG is True:
         cv['n_splits'] = 2
 
-    # ######################################################
-    # 学習・推論 LightGBM ###################################
+    # # ######################################################
+    # # 学習・推論 LightGBM ###################################
 
-    # run nameの設定
-    run_name = 'lgb'
-    run_name = run_name + suffix
-    dir_name = MODEL_DIR_NAME + run_name + '/'
+    # # run nameの設定
+    # run_name = 'lgb'
+    # run_name = run_name + suffix
+    # out_dir_name = MODEL_DIR_NAME + run_name + '/'
 
-    exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
-    my_makedirs(dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
+    # exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
+    # my_makedirs(out_dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
 
-    # 諸々の設定
-    setting = {
-        'run_name': run_name,  # run名 <- settingに不要？
-        'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
-        'target': 'target',  # 目的変数
-        'calc_shap': False,  # shap値を計算するか否か
-        'save_train_pred': True,  # trainデータでの推論値を保存するか否か
-        'task_type': 'multiclass',
-        'debug': DEBUG
-    }
+    # # 諸々の設定
+    # setting = {
+    #     'run_name': run_name,  # run名 <- settingに不要？
+    #     'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
+    #     'target': 'target',  # 目的変数
+    #     'calc_shap': False,  # shap値を計算するか否か
+    #     'save_train_pred': True,  # trainデータでの推論値を保存するか否か
+    #     'task_type': 'multiclass',
+    #     'debug': DEBUG
+    # }
 
-    # モデルのパラメータ
-    model_params = {
-        'boosting_type': 'gbdt',
-        'objective': 'multiclass',
-        'metric': 'multi_logloss',
-        'num_class' : 10,
-        'num_round': 5000,
-        'early_stopping_rounds': 1000,
-        'verbose': 1000,
-        'random_state': 999
-    }
-    if DEBUG is True:
-        model_params['num_round'] = 1000
+    # # モデルのパラメータ
+    # model_params = {
+    #     'boosting_type': 'gbdt',
+    #     'objective': 'multiclass',
+    #     'metric': 'multi_logloss',
+    #     'num_class' : 10,
+    #     'num_round': 5000,
+    #     'early_stopping_rounds': 1000,
+    #     'verbose': 1000,
+    #     'random_state': 999
+    # }
+    # if DEBUG is True:
+    #     model_params['num_round'] = 1000
     
-    runner = Runner(run_name, ModelLGB, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME) # <-MODEL_DIR_NAMEをdir_nameにして良さそう（上でmkdirしているので。）
+    # runner = Runner(ModelLGB, features, setting, model_params, cv, FEATURE_DIR_NAME, out_dir_name)
 
-    use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
+    # use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
 
-    # モデルのconfigをjsonで保存
-    value_list = [features, use_feature_name, model_params, cv, setting]
-    save_model_config(key_list, value_list, dir_name, run_name)
+    # # モデルのconfigをjsonで保存
+    # value_list = [features, use_feature_name, model_params, cv, setting]
+    # save_model_config(key_list, value_list, out_dir_name, run_name)
 
-    # runner.visualize_corr() # 相関係数を可視化して保存
-    if cv.get('method') == 'None':
-        runner.run_train_all()  # 全データで学習
-        runner.run_predict_all()  # 推論
-    else:
-        runner.run_train_cv()  # 学習
-        ModelLGB.calc_feature_importance(dir_name, run_name, use_feature_name)  # feature_importanceを計算
-        runner.run_predict_cv()  # 推論
+    # # runner.visualize_corr() # 相関係数を可視化して保存
+    # if cv.get('method') == 'None':
+    #     runner.run_train_all()  # 全データで学習
+    #     runner.run_predict_all()  # 推論
+    # else:
+    #     runner.run_train_cv()  # 学習
+    #     ModelLGB.calc_feature_importance(out_dir_name, run_name, use_feature_name)  # feature_importanceを計算
+    #     runner.run_predict_cv()  # 推論
 
-    Submission.create_submission(run_name, dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
+    # Submission.create_submission(run_name, out_dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
 
 
     # # ######################################################
@@ -179,10 +184,10 @@ if __name__ == '__main__':
     # # run nameの設定
     # run_name = 'xgb'
     # run_name = run_name + suffix
-    # dir_name = MODEL_DIR_NAME + run_name + '/'
+    # out_dir_name = MODEL_DIR_NAME + run_name + '/'
 
     # # exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
-    # my_makedirs(dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
+    # my_makedirs(out_dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
 
     # # 諸々の設定
     # setting = {
@@ -191,6 +196,7 @@ if __name__ == '__main__':
     #     'target': 'target',  # 目的変数
     #     'calc_shap': False,  # shap値を計算するか否か
     #     'save_train_pred': True,  # trainデータでの推論値を保存するか否か
+    #     'task_type': 'multiclass',
     #     'debug': DEBUG
     # }
 
@@ -206,13 +212,13 @@ if __name__ == '__main__':
     # if DEBUG is True:
     #     model_params['num_round'] = 1000
 
-    # runner = Runner(run_name, ModelXGB, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME)
+    # runner = Runner(ModelXGB, features, setting, model_params, cv, FEATURE_DIR_NAME, out_dir_name)
 
     # use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
 
     # # モデルのconfigをjsonで保存
     # value_list = [features, use_feature_name, model_params, cv, setting]
-    # save_model_config(key_list, value_list, dir_name, run_name)
+    # save_model_config(key_list, value_list, out_dir_name, run_name)
 
     # # runner.visualize_corr() # 相関係数を可視化して保存
     # if cv.get('method') == 'None':
@@ -220,63 +226,63 @@ if __name__ == '__main__':
     #     runner.run_predict_all()  # 推論
     # else:
     #     runner.run_train_cv()  # 学習
-    #     ModelXGB.calc_feature_importance(dir_name, run_name, use_feature_name)  # feature_importanceを計算
+    #     ModelXGB.calc_feature_importance(out_dir_name, run_name, use_feature_name)  # feature_importanceを計算
     #     runner.run_predict_cv()  # 推論
 
-    # Submission.create_submission(run_name, dir_name, setting.get('target'))  # submit作成
+    # Submission.create_submission(run_name, out_dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
 
 
-    # # ######################################################
-    # # 学習・推論 keras ###################################
+    # ######################################################
+    # 学習・推論 keras ###################################
 
-    # # run nameの設定
-    # run_name = 'keras'
-    # run_name = run_name + suffix
-    # dir_name = MODEL_DIR_NAME + run_name + '/'
+    # run nameの設定
+    run_name = 'keras'
+    run_name = run_name + suffix
+    out_dir_name = MODEL_DIR_NAME + run_name + '/'
 
-    # # exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
-    # my_makedirs(dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
+    # exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
+    my_makedirs(out_dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
 
-    # # 諸々の設定
-    # setting = {
-    #     'run_name': run_name,  # run名
-    #     'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
-    #     'target': 'target',  # 目的変数
-    #     'calc_shap': False,  # shap値を計算するか否か
-    #     'save_train_pred': True,  # trainデータでの推論値を保存するか否か
-    #     'task_type': 'multiclass',
-    #     'debug': DEBUG
-    # }
+    # 諸々の設定
+    setting = {
+        'run_name': run_name,  # run名
+        'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
+        'target': 'target',  # 目的変数
+        'calc_shap': False,  # shap値を計算するか否か
+        'save_train_pred': True,  # trainデータでの推論値を保存するか否か
+        'task_type': 'multiclass',
+        'debug': DEBUG
+    }
 
-    # model_params = {
-    #     'task_type': 'multiclass',
-    #     'epochs': 50,
-    #     'batch_size': 999,
-    #     'learning_rate': 0.1,
-    #     'momentum': 0.8,
-    #     'optimizer': 'SGD'
-    # }
-    # if DEBUG is True:
-    #     model_params['epochs'] = 3
+    model_params = {
+        'task_type': 'multiclass',
+        'epochs': 50,
+        'batch_size': 999,
+        'learning_rate': 0.1,
+        'momentum': 0.8,
+        'optimizer': 'SGD'
+    }
+    if DEBUG is True:
+        model_params['epochs'] = 3
 
-    # runner = Runner(run_name, ModelKERAS, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME)
+    runner = Runner(ModelKERAS, features, setting, model_params, cv, FEATURE_DIR_NAME, out_dir_name)
 
-    # use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
+    use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
 
-    # # モデルのconfigをjsonで保存
-    # value_list = [features, use_feature_name, model_params, cv, setting]
-    # save_model_config(key_list, value_list, dir_name, run_name)
+    # モデルのconfigをjsonで保存
+    value_list = [features, use_feature_name, model_params, cv, setting]
+    save_model_config(key_list, value_list, out_dir_name, run_name)
 
-    # # runner.visualize_corr() # 相関係数を可視化して保存
-    # if cv.get('method') == 'None':
-    #     runner.run_train_all()  # 全データで学習
-    #     runner.run_predict_all()  # 推論
-    # else:
-    #     runner.run_train_cv()  # 学習
-    #     runner.model_cls.calc_loss_curve(dir_name, run_name)  # feature_importanceを計算
-    #     runner.run_predict_cv()  # 推論
+    # runner.visualize_corr() # 相関係数を可視化して保存
+    if cv.get('method') == 'None':
+        runner.run_train_all()  # 全データで学習
+        runner.run_predict_all()  # 推論
+    else:
+        runner.run_train_cv()  # 学習
+        runner.model_cls.calc_loss_curve(out_dir_name, run_name)  # feature_importanceを計算
+        runner.run_predict_cv()  # 推論
 
-    # Submission.create_submission(run_name, dir_name, setting.get('target'))  # submit作成
+    Submission.create_submission(run_name, out_dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
 
     # ######################################################
 
@@ -287,10 +293,10 @@ if __name__ == '__main__':
     # # run nameの設定
     # run_name = 'lda'
     # run_name = run_name + suffix
-    # dir_name = MODEL_DIR_NAME + run_name + '/'
+    # out_dir_name = MODEL_DIR_NAME + run_name + '/'
 
     # # exist_check(MODEL_DIR_NAME, run_name)  # 実行可否確認
-    # my_makedirs(dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
+    # my_makedirs(out_dir_name)  # runディレクトリの作成。ここにlogなどが吐かれる
 
     # # 諸々の設定
     # setting = {
@@ -299,6 +305,7 @@ if __name__ == '__main__':
     #     'target': 'target',  # 目的変数
     #     'calc_shap': False,  # shap値を計算するか否か
     #     'save_train_pred': True,  # trainデータでの推論値を保存するか否か
+    #     'task_type': 'multiclass',
     #     'debug': DEBUG
     # }
 
@@ -310,13 +317,13 @@ if __name__ == '__main__':
     # if DEBUG is True:
     #     model_params['num_round'] = 1000
     
-    # runner = Runner(run_name, ModelLDA, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME)
+    # runner = Runner(ModelLDA, features, setting, model_params, cv, FEATURE_DIR_NAME, out_dir_name)
 
     # use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
 
     # # モデルのconfigをjsonで保存
     # value_list = [features, use_feature_name, model_params, cv, setting]
-    # save_model_config(key_list, value_list, dir_name, run_name)
+    # save_model_config(key_list, value_list, out_dir_name, run_name)
 
     # if cv.get('method') == 'None':
     #     runner.run_train_cv()  # 学習
@@ -326,6 +333,6 @@ if __name__ == '__main__':
     #     runner.run_predict_cv()  # 推論
 
     # # 散布図の作成(散布図は全ての学習データで作成する)
-    # ModelLDA.plot_scatter(dir_name, run_name, runner.train_x, runner.train_y, model_params)
+    # ModelLDA.plot_scatter(out_dir_name, run_name, runner.train_x, runner.train_y, model_params)
 
-    # Submission.create_submission(run_name, dir_name, setting.get('target'))  # submit作成
+    # Submission.create_submission(run_name, out_dir_name, setting.get('target'), setting.get('task_type'))  # submit作成

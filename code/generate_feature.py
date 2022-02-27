@@ -6,9 +6,10 @@ import csv
 import yaml
 from pathlib import Path
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from base import Feature, get_arguments, generate_features
 from sklearn.preprocessing import LabelEncoder
 import warnings
+sys.path.append('./src')
+from src.base import Feature, get_arguments, generate_features
 
 sys.path.append(os.pardir)
 sys.path.append('../..')
