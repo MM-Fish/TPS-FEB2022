@@ -2,7 +2,7 @@
 .tmp.driveupload
 .DS_Store
 kaggle.json
-code/__pycache__
+__pycache__
 data/external
 data/features/*.pkl
 data/raw
