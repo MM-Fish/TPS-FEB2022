@@ -1,3 +1,4 @@
+from copyreg import pickle
 import pandas as pd
 import numpy as np
 import sys,os
@@ -20,6 +21,7 @@ with open(CONFIG_FILE) as file:
     yml = yaml.load(file)
 
 RAW_DIR_NAME = yml['SETTING']['RAW_DIR_NAME']  # 特徴量生成元のRAWデータ格納場所
+MODEL_DIR_NAME = yml['SETTING']['MODEL_DIR_NAME']  # 特徴量生成元のRAWデータ格納場所
 Feature.dir = yml['SETTING']['FEATURE_DIR_NAME']  # 生成した特徴量の出力場所
 feature_memo_path = Feature.dir + '_features_memo.csv'
 
@@ -36,6 +38,34 @@ class rawdata(Feature):
         self.test = test.iloc[:, 1:].copy()
         create_memo('all_raw_data', '全初期データ')
 
+# 学習モデルを特徴量データとして追加
+class keras_0226_0937(Feature):
+    def create_features(self):
+        dir_name = self.__class__.__name__
+        self.train = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/.{dir_name}-train.pkl').rename(columns={0: dir_name})
+        self.test = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/{dir_name}-pred.pkl').rename(columns={0: dir_name})
+        create_memo('all_raw_data', 'lgb_0226_0545のデータ')
+
+class lda_0226_0509(Feature):
+    def create_features(self):
+        dir_name = self.__class__.__name__
+        self.train = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/.{dir_name}-train.pkl').rename(columns={0: dir_name})
+        self.test = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/{dir_name}-pred.pkl').rename(columns={0: dir_name})
+        create_memo('all_raw_data', 'lgb_0226_0545のデータ')
+
+class lgb_0222_0016(Feature):
+    def create_features(self):
+        dir_name = self.__class__.__name__
+        self.train = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/.{dir_name}-train.pkl').rename(columns={0: dir_name})
+        self.test = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/{dir_name}-pred.pkl').rename(columns={0: dir_name})
+        create_memo('all_raw_data', 'lgb_0226_0545のデータ')
+
+class lgb_0226_0545(Feature):
+    def create_features(self):
+        dir_name = self.__class__.__name__
+        self.train = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/.{dir_name}-train.pkl').rename(columns={0: dir_name})
+        self.test = pd.read_pickle(MODEL_DIR_NAME + f'{dir_name}/{dir_name}-pred.pkl').rename(columns={0: dir_name})
+        create_memo('all_raw_data', 'lgb_0226_0545のデータ')
 
 # 特徴量メモcsvファイル作成
 def create_memo(col_name, desc):

@@ -92,7 +92,17 @@ def set_default(obj):
 if __name__ == '__main__':
 
     # pklからロードする特徴量の指定
-    features = ['pca_output']
+    features = ['rawdata']
+
+    features = ['pca_output',
+                'tsne_output',
+                'umap_output',
+                'keras_0226_0937',
+                'lda_0226_0509',
+                'lgb_0222_0016',
+                'lgb_0226_0545']
+    
+    # features = ['pca_output']
 
     # CVの設定.methodは[KFold, StratifiedKFold ,GroupKFold]から選択可能
     # CVしない場合（全データで学習させる場合）はmethodに'None'を設定
@@ -120,13 +130,13 @@ if __name__ == '__main__':
 
     # 諸々の設定
     setting = {
-        'run_name': run_name,  # run名
+        'run_name': run_name,  # run名 <- settingに不要？
         'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
         'target': 'target',  # 目的変数
         'calc_shap': False,  # shap値を計算するか否か
         'save_train_pred': True,  # trainデータでの推論値を保存するか否か
-        'debug': DEBUG,
-        'task_type': 'multiclass'
+        'task_type': 'multiclass',
+        'debug': DEBUG
     }
 
     # モデルのパラメータ
@@ -143,7 +153,7 @@ if __name__ == '__main__':
     if DEBUG is True:
         model_params['num_round'] = 1000
     
-    runner = Runner(run_name, ModelLGB, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME)
+    runner = Runner(run_name, ModelLGB, features, setting, model_params, cv, FEATURE_DIR_NAME, MODEL_DIR_NAME) # <-MODEL_DIR_NAMEをdir_nameにして良さそう（上でmkdirしているので。）
 
     use_feature_name = runner.get_feature_name() # 今回の学習で使用する特徴量名を取得
 
@@ -160,7 +170,7 @@ if __name__ == '__main__':
         ModelLGB.calc_feature_importance(dir_name, run_name, use_feature_name)  # feature_importanceを計算
         runner.run_predict_cv()  # 推論
 
-    Submission.create_submission(run_name, dir_name, setting.get('target'))  # submit作成
+    Submission.create_submission(run_name, dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
 
 
     # # ######################################################
@@ -229,12 +239,12 @@ if __name__ == '__main__':
 
     # # 諸々の設定
     # setting = {
-    #     'task_type': 'multiclass',
     #     'run_name': run_name,  # run名
     #     'feature_directory': FEATURE_DIR_NAME,  # 特徴量の読み込み先ディレクトリ
     #     'target': 'target',  # 目的変数
     #     'calc_shap': False,  # shap値を計算するか否か
     #     'save_train_pred': True,  # trainデータでの推論値を保存するか否か
+    #     'task_type': 'multiclass',
     #     'debug': DEBUG
     # }
 

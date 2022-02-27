@@ -88,15 +88,16 @@ class Logger:
 class Submission:
 
     @classmethod
-    def create_submission(cls, run_name, path, sub_y_column):
+    def create_submission(cls, run_name, path, sub_y_column, task_type):
         logger = Logger(path)
         logger.info(f'{run_name} - start create submission')
 
         submission = pd.read_csv(RAW_DIR_NAME + 'sample_submission.csv')
         pred = Util.load_df_pickle(path + f'{run_name}-pred.pkl')
-        # multi-classification
-        REVERSE_TARGET_ENCODING = {value : key for (key, value) in yml['SETTING']['TARGET_ENCODING'].items()}
-        submission[sub_y_column] = pred.iloc[:,0].map(lambda x: REVERSE_TARGET_ENCODING[x])
+        # 多クラス分類
+        if task_type == 'multiclass':
+            REVERSE_TARGET_ENCODING = {value : key for (key, value) in yml['SETTING']['TARGET_ENCODING'].items()}
+            submission[sub_y_column] = pred.iloc[:,0].map(lambda x: REVERSE_TARGET_ENCODING[x])
         
         submission.to_csv(path + f'{run_name}_submission.csv', index=False)
         logger.info(f'{run_name} - end create submission')
