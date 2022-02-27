@@ -8,6 +8,8 @@ import yaml
 import json
 import collections as cl
 import warnings
+from google.cloud import storage
+import glob
 
 sys.path.append('./src')
 sys.path.append('./src/models/learning')
@@ -28,6 +30,13 @@ FEATURE_DIR_NAME = yml['SETTING']['FEATURE_DIR_NAME']
 warnings.filterwarnings("ignore")
 warnings.simplefilter('ignore')
 key_list = ['load_features', 'use_features', 'model_params', 'cv', 'dataset']
+
+BUCKET_NAME = 'kaggleops-bucket-msm'
+BLOB_NAME = 'models'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '../gcs-key.json'
+
+client = storage.Client()
+bucket = client.get_bucket(BUCKET_NAME)
 
 def exist_check(path, run_name):
     """学習ファイルの存在チェックと実行確認
@@ -88,6 +97,13 @@ def set_default(obj):
         return list(obj)
     raise TypeError
 
+def upload_from_directory(bucket: storage.bucket.Bucket, directory_path: str, blob_name: str, root_position=2):
+  rel_paths = glob.glob(directory_path + '/**', recursive=True)
+  for local_file in rel_paths:
+    remote_path = f'{blob_name}/{"/".join(local_file.split(os.sep)[root_position:])}'
+    if os.path.isfile(local_file):
+      blob = bucket.blob(remote_path)
+      blob.upload_from_filename(local_file)
 
 if __name__ == '__main__':
     DEBUG = True # スクリプトが動くかどうか検証する
@@ -284,6 +300,10 @@ if __name__ == '__main__':
 
     Submission.create_submission(run_name, out_dir_name, setting.get('target'), setting.get('task_type'))  # submit作成
 
+    # upload to GCS
+    directry_path = f'../models/{run_name}/'
+    upload_from_directory(bucket, directry_path, BLOB_NAME)
+    
     # ######################################################
 
 

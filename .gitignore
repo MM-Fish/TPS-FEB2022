@@ -2,9 +2,11 @@
 .tmp.driveupload
 .DS_Store
 kaggle.json
+gcs-key.json
 __pycache__
 data/external
 data/features/*.pkl
 data/raw
 data/submission
-edas
+edas/
+models/
